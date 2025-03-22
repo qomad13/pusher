@@ -8,19 +8,13 @@ import asyncio  # Для работы с асинхронностью
 import telegram
 
 # Указываем путь к драйверу через Service
-service = Service("C:\\Users\\sirni\\Desktop\\chromedriver-win64\\chromedriver.exe")
 driver = webdriver.Chrome(service=service)
 
 # Telegram-бот
-TELEGRAM_TOKEN = "7647395031:AAEoTDPCdSApCk9nQ9D0qARgPIro9Thn62E"  # Замените на токен вашего бота
-TELEGRAM_CHAT_ID = "-1002511183701"  # Замените на ID вашего канала или чата
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 
 # Словарь для сопоставления data-key с именами пользователей
 user_map = {
-    "62DC4A764977": "Илья",
-    "06BF5C232386": "Мама",
-    "9EB6CEB45694": "Папа",
     "7E6493F74116": "Малая",
 }
 
@@ -47,7 +41,6 @@ async def main():
         print("Поле для ввода пароля найдено.")
 
         # Вводим пароль
-        password_field.send_keys("sle0632454004")
 
         # Находим кнопку "LOG IN" и нажимаем на нее
         print("Ожидание кнопки 'LOG IN'...")
