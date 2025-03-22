@@ -1,0 +1,81 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+import time
+
+# Указываем путь к драйверу через Service
+service = Service("C:\\Users\\sirni\\Desktop\\chromedriver-win64\\chromedriver.exe")
+driver = webdriver.Chrome(service=service)
+
+try:
+    # Открываем страницу авторизации роутера
+    driver.get("http://192.168.0.1")
+
+    # Явное ожидание появления поля для ввода пароля
+    wait = WebDriverWait(driver, 30)  # Увеличено время ожидания до 30 секунд
+    print("Ожидание поля для ввода пароля...")
+    password_field = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='password']")))
+    print("Поле для ввода пароля найдено.")
+
+    # Вводим пароль
+    password_field.send_keys("sle0632454004")
+
+    # Находим кнопку "LOG IN" и нажимаем на нее
+    print("Ожидание кнопки 'LOG IN'...")
+    login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[@class='button-button' and @title='LOG IN']")))
+    print("Кнопка 'LOG IN' найдена. Нажимаем...")
+    login_button.click()
+
+    # Ждем, пока элемент с текстом "Clients" станет доступным для клика
+    print("Ожидание элемента 'Clients'...")
+    clients_text = wait.until(EC.element_to_be_clickable((By.XPATH, "//p[@class='map-item-text map-clients-text']//span[text()='Clients']")))
+    print("Элемент 'Clients' найден. Нажимаем...")
+    clients_text.click()
+
+    # Ждем, чтобы страница обновилась или загрузилась новая информация
+    print("Ожидание обновления страницы...")
+    time.sleep(5)  # Увеличена задержка до 5 секунд
+
+    # Клик по координатам
+    print("Клик по координатам...")
+    actions = ActionChains(driver)
+    x_offset = 1161  # Укажите координату X
+    y_offset = 230  # Укажите координату Y
+    actions.move_by_offset(x_offset, y_offset).click().perform()
+    print("Клик выполнен.")
+
+    # Извлекаем информацию о подключенных устройствах
+    print("Извлечение информации о подключенных устройствах...")
+    devices = driver.find_elements(By.XPATH, "//tr[contains(@class, 'grid-content-tr')]")
+
+    if devices:
+        print("Список подключенных устройств:")
+        for device in devices:
+            try:
+                # Проверяем наличие имени устройства
+                name_element = device.find_elements(By.XPATH, ".//div[@class='name']")
+                device_name = name_element[0].text if name_element else "Не указано"
+
+                # Проверяем наличие MAC-адреса
+                mac_element = device.find_elements(By.XPATH, ".//div[@class='mac']")
+                mac_address = mac_element[0].text if mac_element else "Не указано"
+
+                # Проверяем наличие IP-адреса
+                ip_element = device.find_elements(By.XPATH, ".//div[@class='ip']")
+                ip_address = ip_element[0].text if ip_element else "Не указано"
+
+                # Извлекаем data-key (если нужно)
+                data_key = device.get_attribute("data-key") or "Не указано"
+
+                print(f"Имя устройства: {device_name}, MAC-адрес: {mac_address}, IP-адрес: {ip_address}, Data-key: {data_key}")
+            except Exception as e:
+                print(f"Ошибка при обработке устройства: {e}")
+    else:
+        print("Подключенные устройства не найдены.")
+finally:
+    # Закрываем браузер после выполнения
+    print("Закрытие браузера...")
+    driver.quit()

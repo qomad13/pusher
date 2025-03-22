@@ -1,0 +1,60 @@
+from scapy.all import sniff, DHCP, IP, Ether
+import logging
+import requests
+
+# Настройка логирования в файл и в консоль
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("dhcp_sniffer.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+
+# Telegram-уведомления
+BOT_TOKEN = "7647395031:AAEoTDPCdSApCk9nQ9D0qARgPIro9Thn62E"
+CHAT_ID = "-1002511183701"
+
+# Храним известные устройства
+known_devices = {}
+
+def send_message(text):
+    """Отправка уведомления в Telegram"""
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": text}
+        requests.post(url, data=payload)
+    except Exception as e:
+        logging.error(f"Ошибка отправки в Telegram: {e}")
+
+def dhcp_sniffer(packet):
+    """Обрабатывает DHCP-пакеты"""
+    if packet.haslayer(DHCP) and packet.haslayer(Ether):
+        mac_address = packet[Ether].src  # MAC устройства
+        ip_address = packet[IP].src if packet.haslayer(IP) else "0.0.0.0"  # IP (если есть)
+        dhcp_options = packet[DHCP].options  # Опции DHCP
+
+        # Логируем каждый DHCP-пакет
+        logging.info(f"📡 DHCP-запрос: MAC={mac_address}, IP={ip_address}, Опции={dhcp_options}")
+
+        # Определяем тип пакета
+        dhcp_types = {1: "Discover", 2: "Offer", 3: "Request", 4: "Decline", 5: "ACK", 6: "NAK", 7: "Release", 8: "Inform"}
+        dhcp_message_type = next((opt[1] for opt in dhcp_options if isinstance(opt, tuple) and opt[0] == "message-type"), None)
+        dhcp_type = dhcp_types.get(dhcp_message_type, "Unknown")
+
+        # Если устройство новое или IP сменился
+        if mac_address not in known_devices or known_devices[mac_address] != ip_address:
+            known_devices[mac_address] = ip_address
+            logging.info(f"🔗 {dhcp_type}: MAC={mac_address}, IP={ip_address}")
+            send_message(f"📡 {dhcp_type} обнаружен: MAC={mac_address}, IP={ip_address}")
+
+        # Если устройство отключилось
+        if dhcp_type == "Release":
+            logging.info(f"🚪 Устройство вышло: MAC={mac_address}, IP={ip_address}")
+            send_message(f"🚪 Отключение: {mac_address} покинул сеть")
+            known_devices.pop(mac_address, None)  # Удаляем из списка
+
+# Бесконечный сниффинг
+logging.info("📡 Запуск DHCP-сниффера (ловим пакеты бесконечно)...")
+sniff(filter="port 67 or port 68", prn=dhcp_sniffer, store=0)
